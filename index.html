@@ -3,47 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>积分概念对比</title>
+    <title>定积分和不定积分对比</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
-            --indefinite-color: #3b82f6;
-            --definite-color: #10b981;
+            --indefinite-color: #2563eb;
+            --definite-color: #059669;
+            --accent-color: #6b21a8;
+            --grid-color: #e5e7eb;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Helvetica Neue', system-ui;
             line-height: 1.6;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f8fafc;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        h1 {
-            color: #1e293b;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .comparison-container {
-            display: grid;
-            gap: 2rem;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .card {
-            background: white;
             padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border-top: 4px solid;
+            background-color: #f3f4f6;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .integral-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .visualization-box {
+            height: 300px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .graph-legend {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.8rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0.3rem 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            margin-right: 0.5rem;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .visualization-box {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="comparison-grid">
+        <!-- 不定积分可视化 -->
+        <div class="integral-card indefinite">
+            <h2>不定积分 ∫f(x)dx</h2>
+            
+            <div class="visualization-box">
+                <canvas class="graph-canvas" id="indefiniteCanvas"></canvas>
+                <div class="graph-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--indefinite-color);"></div>
+                        <span>原函数曲线</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #93c5fd;"></div>
+                        <span>积分常数变化</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 原有对比内容保持不变 -->
+        </div>
+
+        <!-- 定积分可视化 -->
+        <div class="integral-card definite">
+            <h2>定积分 ∫<sub>a</sub><sup>b</sup>f(x)dx</h2>
+            
+            <div class="visualization-box">
+                <canvas class="graph-canvas" id="definiteCanvas"></canvas>
+                <div class="graph-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--definite-color);"></div>
+                        <span>积分面积</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #6ee7b7;"></div>
+                        <span>积分边界</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 原有对比内容保持不变 -->
+        </div>
+    </div>
+
+    <script>
+        // 不定积分可视化
+        const indefiniteCanvas = document.getElementById('indefiniteCanvas');
+        const indefiniteCtx = indefiniteCanvas.getContext('2d');
+        indefiniteCanvas.width = 500;
+        indefiniteCanvas.height = 300;
+
+        // 定积分可视化
+        const definiteCanvas = document.getElementById('definiteCanvas');
+        const definiteCtx = definiteCanvas.getContext('2d');
+        definiteCanvas.width = 500;
+        definiteCanvas.height = 300;
+
+        // 通用坐标系转换函数
+        function createCoordinateConverter(canvas, xMin, xMax, yMin, yMax) {
+            return {
+                toPixelX: (x) => ((x - xMin) / (xMax - xMin)) * canvas.width,
+                toPixelY: (y) => canvas.height - ((y - yMin) / (yMax - yMin)) * canvas.height
+            };
+        }
+
+        // 绘制不定积分曲线族
+        function drawIndefinite() {
+            indefiniteCtx.clearRect(0, 0, indefiniteCanvas.width, indefiniteCanvas.height);
+            
+            const converter = createCoordinateConverter(indefiniteCanvas, -3, 3, -5, 5);
+            
+            // 绘制网格
+            indefiniteCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-color').trim();
+            indefiniteCtx.beginPath();
+            for (let x = -3; x <= 3; x++) {
+                const px = converter.toPixelX(x);
+                indefiniteCtx.moveTo(px, 0);
+                indefiniteCtx.lineTo(px, indefiniteCanvas.height);
+            }
+            for (let y = -5; y <= 5; y++) {
+                const py = converter.toPixelY(y);
+                indefiniteCtx.moveTo(0, py);
+                indefiniteCtx.lineTo(indefiniteCanvas.width, py);
+            }
+            indefiniteCtx.stroke();
+
+            // 绘制曲线族（不同C值的原函数）
+            indefiniteCtx.lineWidth = 2;
+            [-2, -1, 0, 1, 2].forEach(C => {
+                indefiniteCtx.beginPath();
+                indefiniteCtx.strokeStyle = C === 0 ? getComputedStyle(document.documentElement).getPropertyValue('--indefinite-color').trim() : '#93c5fd';
+                
+                for (let x = -3; x <= 3; x += 0.1) {
+                    const y = 0.5 * x ** 2 + C;
+                    const px = converter.toPixelX(x);
+                    const py = converter.toPixelY(y);
+                    
+                    if (x === -3) indefiniteCtx.moveTo(px, py);
+                    else indefiniteCtx.lineTo(px, py);
+                }
+                indefiniteCtx.stroke();
+            });
+        }
+
+        // 绘制定积分面积
+        function drawDefinite() {
+            definiteCtx.clearRect(0, 0, definiteCanvas.width, definiteCanvas.height);
+            
+            const converter = createCoordinateConverter(definiteCanvas, 0, 3, -1, 3);
+            const a = 1, b = 2;
+
+            // 绘制函数曲线
+            definiteCtx.beginPath();
+            definiteCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--definite-color').trim();
+            definiteCtx.lineWidth = 2;
+            
+            for (let x = 0; x <= 3; x += 0.1) {
+                const y = 0.5 * x ** 2;
+                const px = converter.toPixelX(x);
+                const py = converter.toPixelY(y);
+                
+                if (x === 0) definiteCtx.moveTo(px, py);
+                else definiteCtx.lineTo(px, py);
+            }
+            definiteCtx.stroke();
+
+            // 填充积分区域
+            definiteCtx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+            definiteCtx.beginPath();
+            definiteCtx.moveTo(converter.toPixelX(a), converter.toPixelY(0));
+            for (let x = a; x <= b; x += 0.1) {
+                const y = 0.5 * x ** 2;
+                definiteCtx.lineTo(converter.toPixelX(x), converter.toPixelY(y));
+            }
+            definiteCtx.lineTo(converter.toPixelX(b), converter.toPixelY(0));
+            definiteCtx.fill();
+
+            // 绘制边界线
+            definiteCtx.strokeStyle = '#6ee7b7';
+            definiteCtx.beginPath();
+            definiteCtx.moveTo(converter.toPixelX(a), converter.toPixelY(0));
+            definiteCtx.lineTo(converter.toPixelX(a), converter.toPixelY(0.5 * a ** 2));
+            definiteCtx.moveTo(converter.toPixelX(b), converter.toPixelY(0));
+            definiteCtx.lineTo(converter.toPixelX(b), converter.toPixelY(0.5 * b ** 2));
+            definiteCtx.stroke();
+        }
+
+        // 初始化绘图
+        drawIndefinite();
+        drawDefinite();
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            indefiniteCanvas.width = indefiniteCanvas.offsetWidth;
+            indefiniteCanvas.height = indefiniteCanvas.offsetHeight;
+            definiteCanvas.width = definiteCanvas.offsetWidth;
+            definiteCanvas.height = definiteCanvas.offsetHeight;
+            drawIndefinite();
+            drawDefinite();
+        });
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分系统对比</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --indefinite-color: #2563eb;
+            --definite-color: #059669;
+            --accent-color: #6b21a8;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', system-ui;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f3f4f6;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .integral-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-top: 6px solid;
         }
 
         .indefinite {
@@ -55,158 +298,178 @@
         }
 
         h2 {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
+            color: var(--accent-color);
             margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid;
         }
 
-        .math-example {
-            font-size: 1.2rem;
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background-color: #f1f5f9;
-            border-radius: 8px;
+        .definition {
+            font-size: 1.1rem;
+            color: #374151;
+            margin-bottom: 2rem;
+            line-height: 1.8;
         }
 
         .comparison-table {
-            margin: 2rem 0;
-            border-collapse: collapse;
             width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .comparison-table th {
+            text-align: left;
+            padding: 1rem;
+            background-color: #f9fafb;
+            width: 30%;
         }
 
         .comparison-table td {
             padding: 1rem;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e5e7eb;
         }
 
-        .comparison-table tr:last-child td {
-            border-bottom: none;
+        .properties-list {
+            list-style: none;
+            padding-left: 1.5rem;
         }
 
-        .visual-demo {
-            display: flex;
-            justify-content: space-around;
-            margin: 2rem 0;
-        }
-
-        .graph {
-            width: 150px;
-            height: 150px;
-            border: 2px solid;
+        .properties-list li {
+            margin-bottom: 1rem;
             position: relative;
         }
 
-        .indefinite-graph {
-            border-color: var(--indefinite-color);
-        }
-
-        .definite-graph {
-            border-color: var(--definite-color);
-        }
-
-        .graph::after {
-            content: '';
+        .properties-list li::before {
+            content: "•";
+            color: var(--accent-color);
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(59, 130, 246, 0.1);
+            left: -1.2rem;
+            font-size: 1.2rem;
         }
 
-        .indefinite-graph::after {
-            height: 80%;
-            animation: wave 2s infinite;
-        }
-
-        .definite-graph::after {
-            height: 60%;
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        @keyframes wave {
-            0%, 100% { height: 80%; }
-            50% { height: 60%; }
+        .example-box {
+            background-color: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
         }
 
         @media (max-width: 768px) {
-            .comparison-container {
+            .comparison-grid {
                 grid-template-columns: 1fr;
-            }
-            
-            h1 {
-                font-size: 2rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>积分概念对比</h1>
-        <p>直观理解定积分与不定积分的核心差异</p>
-    </div>
-
-    <div class="comparison-container">
+    <div class="comparison-grid">
         <!-- 不定积分 -->
-        <div class="card indefinite">
+        <div class="integral-card indefinite">
             <h2>不定积分 ∫f(x)dx</h2>
             
-            <div class="math-example">
-                \[\int x^2 dx = \frac{1}{3}x^3 + C\]
-            </div>
-
-            <div class="visual-demo">
-                <div class="graph indefinite-graph"></div>
+            <div class="definition">
+                <p>不定积分是求导运算的逆过程，表示找出所有导数为f(x)的原函数集合。其数学定义为：</p>
+                <div class="example-box">
+                    \[ \text{若 } \frac{d}{dx}F(x) = f(x), \text{则 } \int f(x)dx = F(x) + C \]
+                    <p>其中C为积分常数，代表垂直方向上的无穷多可能性。</p>
+                </div>
             </div>
 
             <table class="comparison-table">
                 <tr>
-                    <td><strong>定义</strong></td>
-                    <td>求导的逆运算</td>
+                    <th>核心特点</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>结果包含任意常数C</li>
+                            <li>表示函数族（曲线族）</li>
+                            <li>与微分方程密切相关</li>
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
-                    <td><strong>结果</strong></td>
-                    <td>函数族（含常数C）</td>
+                    <th>计算方法</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>基本积分公式</li>
+                            <li>换元积分法</li>
+                            <li>分部积分法</li>
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
-                    <td><strong>几何意义</strong></td>
-                    <td>原函数曲线的垂直平移</td>
-                </tr>
-                <tr>
-                    <td><strong>应用</strong></td>
-                    <td>求位移函数、微分方程解</td>
+                    <th>典型应用</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>求运动物体的位移函数</li>
+                            <li>解微分方程的通解</li>
+                            <li>概率密度函数的累积分布</li>
+                        </ul>
+                    </td>
                 </tr>
             </table>
+
+            <div class="example-box">
+                <h3>应用示例</h3>
+                <p>已知速度函数 \( v(t) = 2t \)：</p>
+                \[ s(t) = \int 2t\,dt = t^2 + C \]
+                <p>其中C由初始位置确定，体现不同出发点的可能性</p>
+            </div>
         </div>
 
         <!-- 定积分 -->
-        <div class="card definite">
+        <div class="integral-card definite">
             <h2>定积分 ∫<sub>a</sub><sup>b</sup>f(x)dx</h2>
             
-            <div class="math-example">
-                \[\int_{0}^{2} x^2 dx = \frac{8}{3}\]
-            </div>
-
-            <div class="visual-demo">
-                <div class="graph definite-graph"></div>
+            <div class="definition">
+                <p>定积分表示函数在区间[a,b]上的累积和，由黎曼和极限定义，其核心公式为：</p>
+                <div class="example-box">
+                    \[ \int_{a}^{b} f(x)dx = \lim_{n\to\infty}\sum_{i=1}^{n}f(x_i^*)\Delta x \]
+                    <p>通过牛顿-莱布尼兹公式可转换为：</p>
+                    \[ F(b) - F(a) \]
+                    <p>其中F(x)是f(x)的原函数</p>
+                </div>
             </div>
 
             <table class="comparison-table">
                 <tr>
-                    <td><strong>定义</strong></td>
-                    <td>和的极限</td>
+                    <th>核心特点</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>结果确定的具体数值</li>
+                            <li>具有线性性和可加性</li>
+                            <li>积分值与变量符号无关</li>
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
-                    <td><strong>结果</strong></td>
-                    <td>确定数值</td>
+                    <th>计算方法</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>牛顿-莱布尼兹公式</li>
+                            <li>数值积分法</li>
+                            <li>对称性简化计算</li>
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
-                    <td><strong>几何意义</strong></td>
-                    <td>曲边梯形的面积</td>
-                </tr>
-                <tr>
-                    <td><strong>应用</strong></td>
-                    <td>求面积、体积、功</td>
+                    <th>典型应用</th>
+                    <td>
+                        <ul class="properties-list">
+                            <li>计算曲线围成的面积</li>
+                            <li>求变力做功的总量</li>
+                            <li>概率计算的累积概率</li>
+                        </ul>
+                    </td>
                 </tr>
             </table>
+
+            <div class="example-box">
+                <h3>应用示例</h3>
+                <p>计算抛物线 \( y = x^2 \) 在[0,2]区间下的面积：</p>
+                \[ \int_{0}^{2} x^2 dx = \left.\frac{1}{3}x^3\right|_{0}^{2} = \frac{8}{3} \]
+                <p>结果精确表示该区域的面积值</p>
+            </div>
         </div>
     </div>
 </body>
